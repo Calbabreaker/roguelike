@@ -1,4 +1,7 @@
-use crate::{map, map::Map, object::Object};
+use crate::{
+    map::{Map, MAP_HEIGHT, MAP_WIDTH},
+    object::Object,
+};
 use tcod::console::Console;
 
 pub const SCREEN_WIDTH: i32 = 80;
@@ -23,7 +26,7 @@ impl Game {
             .title("Roguelike Game")
             .init();
 
-        let console = tcod::console::Offscreen::new(map::MAP_WIDTH, map::MAP_HEIGHT);
+        let console = tcod::console::Offscreen::new(MAP_WIDTH, MAP_HEIGHT);
 
         let player = Object::new(25, 23, '@', tcod::colors::WHITE);
 
@@ -34,7 +37,7 @@ impl Game {
         return Game {
             root,
             console,
-            map: map::make_map(),
+            map: Map::new(&mut objects[0]),
             objects,
         };
     }
@@ -57,26 +60,7 @@ impl Game {
             object.draw(&mut self.console);
         }
 
-        for y in 0..map::MAP_HEIGHT {
-            for x in 0..map::MAP_WIDTH {
-                let transparent = self.map[x as usize][y as usize].transparent;
-                if transparent {
-                    self.console.set_char_background(
-                        x,
-                        y,
-                        map::COLOR_DARK_WALL,
-                        tcod::BackgroundFlag::Set,
-                    );
-                } else {
-                    self.console.set_char_background(
-                        x,
-                        y,
-                        map::COLOR_DARK_GROUND,
-                        tcod::BackgroundFlag::Set,
-                    );
-                }
-            }
-        }
+        self.map.draw(&mut self.console);
 
         tcod::console::blit(
             &self.console,
