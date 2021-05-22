@@ -56,11 +56,14 @@ impl Game {
     fn render(&mut self) {
         self.console.clear();
 
+        self.map.recaculate_fov(&self.objects[0]);
         for object in &self.objects {
-            object.draw(&mut self.console);
+            if self.map.fov_map.is_in_fov(object.x, object.y) {
+                object.draw(&mut self.console);
+            }
         }
 
-        self.map.draw(&mut self.console, &self.objects[0]);
+        self.map.draw(&mut self.console);
 
         tcod::console::blit(
             &self.console,

@@ -63,6 +63,7 @@ impl Rect {
 pub struct Tile {
     pub solid: bool,
     pub transparent: bool,
+    pub explored: bool,
 }
 
 impl Tile {
@@ -70,6 +71,7 @@ impl Tile {
         return Tile {
             solid: false,
             transparent: true,
+            explored: false,
         };
     }
 
@@ -77,13 +79,14 @@ impl Tile {
         return Tile {
             solid: true,
             transparent: false,
+            explored: false,
         };
     }
 }
 
 pub struct Map {
     pub tiles: Vec<Vec<Tile>>,
-    fov_map: tcod::map::Map,
+    pub fov_map: tcod::map::Map,
 }
 
 impl Map {
@@ -140,16 +143,36 @@ impl Map {
         return map;
     }
 
-    pub fn draw(&self, console: &mut tcod::console::Offscreen, player: &Object) {
+    pub fn draw(&mut self, console: &mut tcod::console::Offscreen) {
         for y in 0..MAP_HEIGHT {
             for x in 0..MAP_WIDTH {
                 let transparent = self.tiles[x as usize][y as usize].transparent;
-                if transparent {
-                    console.set_char_background(x, y, COLOR_DARK_WALL, tcod::BackgroundFlag::Set);
-                } else {
-                    console.set_char_background(x, y, COLOR_DARK_GROUND, tcod::BackgroundFlag::Set);
+                let visible = self.fov_map.is_in_fov(x, y);
+                let color = match (visible, transparent) {
+                    (false, true) => COLOR_DARK_WALL,
+                    (false, false) => COLOR_DARK_GROUND,
+
+                    (true, true) => COLOR_LIGHT_WALL,
+                    (true, false) => COLOR_LIGHT_GROUND,
+                };
+
+                let explored = &mut self.tiles[x as usize][y as usize].explored;
+                if visible {
+                    *explored = true;
+                }
+
+                if *explored {
+                    console.set_char_background(x, y, color, tcod::BackgroundFlag::Set);
                 }
             }
+        }
+    }
+
+    pub fn recaculate_fov(&mut self, player: &Object) {
+        let should_recalculate = player.x != player.prev_x || player.y != player.prev_y;
+        if should_recalculate {
+            self.fov_map
+                .compute_fov(player.x, player.y, 10, true, tcod::map::FovAlgorithm::Basic);
         }
     }
 
