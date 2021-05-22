@@ -9,11 +9,23 @@ const ROOM_MAX_SIZE: i32 = 10;
 const ROOM_MIN_SIZE: i32 = 6;
 const MAX_ROOMS: i32 = 30;
 
-pub const COLOR_DARK_WALL: tcod::Color = tcod::Color { r: 0, g: 0, b: 100 };
-pub const COLOR_DARK_GROUND: tcod::Color = tcod::Color {
+const COLOR_DARK_WALL: tcod::Color = tcod::Color { r: 0, g: 0, b: 100 };
+
+const COLOR_LIGHT_WALL: tcod::Color = tcod::Color {
+    r: 130,
+    g: 110,
+    b: 50,
+};
+const COLOR_DARK_GROUND: tcod::Color = tcod::Color {
     r: 50,
     g: 50,
-    b: 100,
+    b: 150,
+};
+
+const COLOR_LIGHT_GROUND: tcod::Color = tcod::Color {
+    r: 200,
+    g: 180,
+    b: 50,
 };
 
 pub struct Rect {
@@ -71,12 +83,14 @@ impl Tile {
 
 pub struct Map {
     pub tiles: Vec<Vec<Tile>>,
+    fov_map: tcod::map::Map,
 }
 
 impl Map {
     pub fn new(player: &mut Object) -> Self {
         let mut map = Map {
             tiles: vec![vec![Tile::new_wall(); MAP_HEIGHT as usize]; MAP_WIDTH as usize],
+            fov_map: tcod::map::Map::new(MAP_WIDTH, MAP_HEIGHT),
         };
 
         let mut rooms = Vec::new();
@@ -116,10 +130,17 @@ impl Map {
             }
         }
 
+        for y in 0..MAP_HEIGHT {
+            for x in 0..MAP_WIDTH {
+                let tile = map.tiles[x as usize][y as usize];
+                map.fov_map.set(x, y, tile.transparent, !tile.solid);
+            }
+        }
+
         return map;
     }
 
-    pub fn draw(&self, console: &mut tcod::console::Offscreen) {
+    pub fn draw(&self, console: &mut tcod::console::Offscreen, player: &Object) {
         for y in 0..MAP_HEIGHT {
             for x in 0..MAP_WIDTH {
                 let transparent = self.tiles[x as usize][y as usize].transparent;

@@ -60,7 +60,7 @@ impl Game {
             object.draw(&mut self.console);
         }
 
-        self.map.draw(&mut self.console);
+        self.map.draw(&mut self.console, &self.objects[0]);
 
         tcod::console::blit(
             &self.console,
