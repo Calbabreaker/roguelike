@@ -166,11 +166,8 @@ impl Map {
     }
 
     pub fn recaculate_fov(&mut self, player: &Object) {
-        let should_recalculate = player.x != player.prev_x || player.y != player.prev_y;
-        if should_recalculate {
-            self.fov_map
-                .compute_fov(player.x, player.y, 10, true, tcod::map::FovAlgorithm::Basic);
-        }
+        self.fov_map
+            .compute_fov(player.x, player.y, 10, true, tcod::map::FovAlgorithm::Basic);
     }
 
     fn create_room(&mut self, room: &Rect) {
