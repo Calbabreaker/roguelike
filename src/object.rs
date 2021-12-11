@@ -6,18 +6,18 @@ pub struct Object {
     pub y: i32,
     pub prev_x: i32,
     pub prev_y: i32,
-    character: char,
+    glyph: char,
     color: tcod::Color,
 }
 
 impl Object {
-    pub fn new(x: i32, y: i32, character: char, color: tcod::Color) -> Self {
+    pub fn new(x: i32, y: i32, glyph: char, color: tcod::Color) -> Self {
         return Object {
             x,
             y,
             prev_x: 0,
             prev_y: 0,
-            character,
+            glyph,
             color,
         };
     }
@@ -35,6 +35,6 @@ impl Object {
 
     pub fn draw(&self, console: &mut dyn tcod::Console) {
         console.set_default_foreground(self.color);
-        console.put_char(self.x, self.y, self.character, tcod::BackgroundFlag::None);
+        console.put_char(self.x, self.y, self.glyph, tcod::BackgroundFlag::None);
     }
 }

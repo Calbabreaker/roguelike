@@ -86,17 +86,17 @@ impl Tile {
 
 pub struct Map {
     pub tiles: Vec<Vec<Tile>>,
+    pub rooms: Vec<Rect>,
     pub fov_map: tcod::map::Map,
 }
 
 impl Map {
-    pub fn new(player: &mut Object) -> Self {
+    pub fn new() -> Self {
         let mut map = Map {
             tiles: vec![vec![Tile::new_wall(); MAP_HEIGHT as usize]; MAP_WIDTH as usize],
             fov_map: tcod::map::Map::new(MAP_WIDTH, MAP_HEIGHT),
+            rooms: Vec::new(),
         };
-
-        let mut rooms = Vec::new();
 
         for _ in 0..MAX_ROOMS {
             let w = rand::thread_rng().gen_range(ROOM_MIN_SIZE..=ROOM_MAX_SIZE);
@@ -106,18 +106,15 @@ impl Map {
 
             let new_room = Rect::new(x, y, w, h);
 
-            let invalid = rooms
+            let invalid = map
+                .rooms
                 .iter()
                 .any(|other_room| new_room.intersects_with(other_room));
 
             if !invalid {
-                let (center_x, center_y) = new_room.get_center();
-
-                if rooms.is_empty() {
-                    player.x = center_x;
-                    player.y = center_y;
-                } else {
-                    let (prev_center_x, prev_center_y) = rooms[rooms.len() - 1].get_center();
+                if !map.rooms.is_empty() {
+                    let (center_x, center_y) = new_room.get_center();
+                    let (prev_center_x, prev_center_y) = map.rooms.last().unwrap().get_center();
 
                     if rand::random() {
                         map.create_htunnel(prev_center_x, center_x, prev_center_y);
@@ -129,7 +126,7 @@ impl Map {
                 }
 
                 map.create_room(&new_room);
-                rooms.push(new_room);
+                map.rooms.push(new_room);
             }
         }
 
@@ -140,7 +137,7 @@ impl Map {
             }
         }
 
-        return map;
+        map
     }
 
     pub fn draw(&mut self, console: &mut tcod::console::Offscreen) {

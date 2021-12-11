@@ -1,12 +1,11 @@
 use crate::{
-    map::{Map, MAP_HEIGHT, MAP_WIDTH},
+    map::{Map, Rect, MAP_HEIGHT, MAP_WIDTH},
     object::Object,
 };
 use tcod::console::Console;
 
 pub const SCREEN_WIDTH: i32 = 80;
 pub const SCREEN_HEIGHT: i32 = 50;
-pub const LIMIT_FPS: i32 = 20;
 
 pub struct Game {
     root: tcod::console::Root,
@@ -17,40 +16,31 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Self {
-        tcod::system::set_fps(LIMIT_FPS);
-
-        let root = tcod::console::Root::initializer()
-            .font("arial10x10.png", tcod::FontLayout::Tcod)
-            .font_type(tcod::FontType::Greyscale)
-            .size(SCREEN_WIDTH, SCREEN_HEIGHT)
-            .title("Roguelike Game")
-            .init();
-
-        let console = tcod::console::Offscreen::new(MAP_WIDTH, MAP_HEIGHT);
-
-        let player = Object::new(25, 23, '@', tcod::colors::WHITE);
-
-        // assumes 0 is the player
-        let mut objects = Vec::new();
-        objects.push(player);
-
-        return Game {
-            root,
-            console,
-            map: Map::new(&mut objects[0]),
-            objects,
+        let mut game = Game {
+            root: tcod::RootConsole::initializer()
+                .font("arial10x10.png", tcod::FontLayout::Tcod)
+                .font_type(tcod::FontType::Greyscale)
+                .size(SCREEN_WIDTH, SCREEN_HEIGHT)
+                .title("Roguelike Game")
+                .init(),
+            console: tcod::OffscreenConsole::new(MAP_WIDTH, MAP_HEIGHT),
+            map: Map::new(),
+            objects: Vec::new(),
         };
+
+        let player = create_object(&game.map.rooms[0], '@', tcod::colors::WHITE);
+        let npc = create_object(&game.map.rooms[1], '@', tcod::colors::YELLOW);
+
+        game.objects.push(player);
+        game.objects.push(npc);
+        game
     }
 
     pub fn run(&mut self) {
         while !self.root.window_closed() {
             self.render();
-            self.update();
+            self.handle_input();
         }
-    }
-
-    fn update(&mut self) {
-        self.handle_input();
     }
 
     fn render(&mut self) {
@@ -102,4 +92,9 @@ impl Game {
             _ => {}
         }
     }
+}
+
+fn create_object(room: &Rect, glyph: char, color: tcod::Color) -> Object {
+    let (x, y) = room.get_center();
+    Object::new(x, y, glyph, color)
 }
