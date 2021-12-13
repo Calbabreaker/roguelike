@@ -1,3 +1,9 @@
+#[derive(Debug, PartialEq)]
+pub enum DeathType {
+    Player,
+    Monster,
+}
+
 // combat related stuff (player, monsters, NPCs)
 #[derive(Debug)]
 pub struct Fighter {
@@ -5,6 +11,7 @@ pub struct Fighter {
     pub hp: i32,
     pub defense: i32,
     pub power: i32,
+    pub death_type: DeathType,
 }
 
 #[derive(Debug, PartialEq)]
@@ -19,33 +26,41 @@ pub struct Object {
     glyph: char,
     color: tcod::Color,
     pub name: String,
-    pub solid: bool,
-    pub alive: bool,
+    pub blocks: bool,
     pub fighter: Option<Fighter>,
     pub ai: Option<Ai>,
+    pub alive: bool,
 }
 
 impl Object {
-    pub fn new(x: i32, y: i32, glyph: char, color: tcod::Color, name: &str, solid: bool) -> Self {
+    pub fn new(x: i32, y: i32, glyph: char, color: tcod::Color, name: &str, blocks: bool) -> Self {
         return Object {
             x,
             y,
             glyph,
             color,
             name: name.into(),
-            solid,
-            alive: true,
+            blocks,
             fighter: None,
             ai: None,
+            alive: true,
         };
     }
 
-    pub fn add_fighter(mut self, max_hp: i32, hp: i32, defense: i32, power: i32) -> Self {
+    pub fn add_fighter(
+        mut self,
+        max_hp: i32,
+        hp: i32,
+        defense: i32,
+        power: i32,
+        death_type: DeathType,
+    ) -> Self {
         self.fighter = Some(Fighter {
             max_hp,
             hp,
             defense,
             power,
+            death_type,
         });
         self
     }
@@ -72,5 +87,54 @@ impl Object {
     pub fn draw(&self, console: &mut dyn tcod::Console) {
         console.set_default_foreground(self.color);
         console.put_char(self.x, self.y, self.glyph, tcod::BackgroundFlag::None);
+    }
+
+    pub fn take_damage(&mut self, damage: i32) {
+        if let Some(fighter) = &mut self.fighter {
+            fighter.hp -= damage;
+            if fighter.hp <= 0 {
+                self.die();
+            }
+        }
+    }
+
+    pub fn attack(&self, target: &mut Object) {
+        let damage = self.fighter.as_ref().map_or(0, |f| f.power)
+            - target.fighter.as_ref().map_or(0, |f| f.defense);
+
+        if damage > 0 {
+            println!(
+                "{} attacks {} for {} hit points!",
+                self.name, target.name, damage
+            );
+            target.take_damage(damage);
+        } else {
+            println!(
+                "{} attacks {} but it has no effect!",
+                self.name, target.name
+            );
+        }
+    }
+
+    pub fn die(&mut self) {
+        if let Some(fighter) = &self.fighter {
+            match fighter.death_type {
+                DeathType::Player => {
+                    println!("You died!");
+                    self.color = tcod::colors::RED;
+                }
+                DeathType::Monster => {
+                    println!("{} is dead!", self.name);
+                    self.fighter = None;
+                    self.color = tcod::colors::DARK_RED;
+                }
+            }
+
+            self.glyph = '%';
+            self.blocks = false;
+            self.ai = None;
+            self.alive = false;
+            self.name = format!("Remains of {}", self.name);
+        }
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     map::{Map, MAP_HEIGHT, MAP_WIDTH},
-    object::{Ai, Fighter, Object},
+    object::{Ai, DeathType, Object},
 };
 use rand::Rng;
 use tcod::console::Console;
@@ -35,14 +35,8 @@ impl Game {
         };
 
         let (start_x, start_y) = game.map.rooms[0].get_center();
-        let mut player = Object::new(start_x, start_y, '@', tcod::colors::WHITE, "Player", true);
-        player.fighter = Some(Fighter {
-            max_hp: 30,
-            hp: 30,
-            defense: 2,
-            power: 5,
-        });
-
+        let player = Object::new(start_x, start_y, '@', tcod::colors::WHITE, "Player", true)
+            .add_fighter(30, 30, 2, 5, DeathType::Player);
         game.objects.push(player);
 
         for i in 0..game.map.rooms.len() {
@@ -67,17 +61,15 @@ impl Game {
         if player.get_pos() != self.prev_player_pos {
             self.map.recaculate_fov(player);
         }
-
         self.prev_player_pos = player.get_pos();
 
-        for object in &self.objects {
+        for object in self.objects.iter().rev() {
             if self.map.fov_map.is_in_fov(object.x, object.y) {
                 object.draw(&mut self.console);
             }
         }
 
         self.map.draw(&mut self.console);
-
         tcod::console::blit(
             &self.console,
             (0, 0),
@@ -86,6 +78,17 @@ impl Game {
             (0, 0),
             1.0,
             1.0,
+        );
+
+        // show the player's stats
+        let fighter = player.fighter.as_ref().unwrap();
+        self.root.set_default_foreground(tcod::colors::WHITE);
+        self.root.print_ex(
+            1,
+            SCREEN_HEIGHT - 2,
+            tcod::BackgroundFlag::None,
+            tcod::TextAlignment::Left,
+            format!("HP: {}/{} ", fighter.hp, fighter.max_hp),
         );
 
         self.root.flush();
@@ -115,12 +118,9 @@ impl Game {
     }
 
     fn object_update(&mut self) {
-        let player = &self.objects[PLAYER_INDEX];
-        if player.alive {
-            for i in 0..self.objects.len() {
-                if self.objects[i].ai.is_some() {
-                    self.ai_basic_turn(i);
-                }
+        for i in 0..self.objects.len() {
+            if self.objects[i].ai.is_some() {
+                self.ai_basic_turn(i);
             }
         }
     }
@@ -131,15 +131,12 @@ impl Game {
         if self.map.fov_map.is_in_fov(monster.x, monster.y) {
             // move towards player if too far away
             if monster.distance(&player) >= 2.0 {
-                // cannot borrow position since function mut borrows self
+                // cannot use player.x/player.y since move_obj_towards mut borrows self
                 let (player_x, player_y) = player.get_pos();
                 self.move_obj_towards(monster_index, player_x, player_y);
-            } else if player.fighter.as_ref().map_or(false, |f| f.hp > 0) {
-                let monster = &self.objects[monster_index];
-                println!(
-                    "The attack of the {} bounces off your shiny metal armor!",
-                    monster.name
-                );
+            } else if player.alive {
+                let (monster, player) = self.get_obj_tuple(monster_index, PLAYER_INDEX);
+                monster.attack(player);
             }
         }
     }
@@ -151,7 +148,7 @@ impl Game {
 
         self.objects
             .iter()
-            .any(|object| object.solid && object.get_pos() == (x, y))
+            .any(|object| object.blocks && object.get_pos() == (x, y))
     }
 
     fn place_random_objects(&mut self, room_index: usize) {
@@ -165,10 +162,10 @@ impl Game {
             if !self.is_blocked(x, y) {
                 let monster = match rand::random::<f32>() {
                     p if p < 0.8 => Object::new(x, y, 'o', tcod::colors::DARKER_GREEN, "Orc", true)
-                        .add_fighter(10, 10, 0, 3)
+                        .add_fighter(10, 10, 0, 3, DeathType::Monster)
                         .add_ai(Ai::Basic),
                     _ => Object::new(x, y, 'T', tcod::colors::DARK_GREEN, "Troll", true)
-                        .add_fighter(16, 16, 1, 4)
+                        .add_fighter(16, 16, 1, 4, DeathType::Monster)
                         .add_ai(Ai::Basic),
                 };
 
@@ -178,25 +175,25 @@ impl Game {
     }
 
     fn move_obj_by(&mut self, obj_index: usize, diff_x: i32, diff_y: i32) {
-        let (x, y) = &self.objects[obj_index].get_pos();
-        let (target_x, target_y) = (x + diff_x, y + diff_y);
+        let object = &self.objects[obj_index];
+        if object.alive {
+            let (x, y) = &object.get_pos();
+            let (target_x, target_y) = (x + diff_x, y + diff_y);
 
-        if obj_index == PLAYER_INDEX {
-            let target_index = self
-                .objects
-                .iter()
-                .position(|object| object.get_pos() == (target_x, target_y));
+            if obj_index == PLAYER_INDEX {
+                let target_index = self.objects.iter().position(|object| {
+                    object.fighter.is_some() && object.get_pos() == (target_x, target_y)
+                });
 
-            target_index.map(|target_index| {
-                println!(
-                    "The {} laughs at your puny efforts to attack him!",
-                    self.objects[target_index].name
-                );
-            });
-        }
+                if let Some(target_index) = target_index {
+                    let (player, target) = self.get_obj_tuple(PLAYER_INDEX, target_index);
+                    player.attack(target);
+                }
+            }
 
-        if !self.is_blocked(target_x, target_y) {
-            self.objects[obj_index].set_pos(target_x, target_y);
+            if !self.is_blocked(target_x, target_y) {
+                self.objects[obj_index].set_pos(target_x, target_y);
+            }
         }
     }
 
@@ -208,5 +205,21 @@ impl Game {
         let step_x = (diff_x as f32 / distance).round() as i32;
         let step_y = (diff_y as f32 / distance).round() as i32;
         self.move_obj_by(obj_index, step_x, step_y);
+    }
+
+    // mutably borrows two seperate objects
+    fn get_obj_tuple(
+        &mut self,
+        first_index: usize,
+        second_index: usize,
+    ) -> (&mut Object, &mut Object) {
+        assert!(first_index != second_index);
+        let split_at_index = std::cmp::max(first_index, second_index);
+        let (first_slice, second_slice) = self.objects.split_at_mut(split_at_index);
+        if first_index < second_index {
+            (&mut first_slice[first_index], &mut second_slice[0])
+        } else {
+            (&mut second_slice[0], &mut first_slice[second_index])
+        }
     }
 }
