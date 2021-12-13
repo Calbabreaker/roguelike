@@ -34,7 +34,7 @@ pub struct Object {
 
 impl Object {
     pub fn new(x: i32, y: i32, glyph: char, color: tcod::Color, name: &str, blocks: bool) -> Self {
-        return Object {
+        Object {
             x,
             y,
             glyph,
@@ -44,7 +44,7 @@ impl Object {
             fighter: None,
             ai: None,
             alive: true,
-        };
+        }
     }
 
     pub fn add_fighter(
@@ -76,7 +76,7 @@ impl Object {
     }
 
     pub fn get_pos(&self) -> (i32, i32) {
-        return (self.x, self.y);
+        (self.x, self.y)
     }
 
     pub fn distance(&self, other: &Object) -> f32 {

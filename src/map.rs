@@ -37,25 +37,25 @@ pub struct Rect {
 
 impl Rect {
     pub fn new(x: i32, y: i32, width: i32, height: i32) -> Self {
-        return Rect {
+        Rect {
             x1: x,
             y1: y,
             x2: x + width,
             y2: y + height,
-        };
+        }
     }
 
     pub fn get_center(&self) -> (i32, i32) {
         let center_x = (self.x1 + self.x2) / 2;
         let center_y = (self.y1 + self.y2) / 2;
-        return (center_x, center_y);
+        (center_x, center_y)
     }
 
     pub fn intersects_with(&self, other: &Rect) -> bool {
-        return (self.x1 <= other.x2)
+        (self.x1 <= other.x2)
             && (self.x2 >= other.x1)
             && (self.y1 <= other.y2)
-            && (self.y2 >= other.y1);
+            && (self.y2 >= other.y1)
     }
 }
 
@@ -68,19 +68,19 @@ pub struct Tile {
 
 impl Tile {
     pub fn new_empty() -> Self {
-        return Tile {
+        Tile {
             solid: false,
             transparent: true,
             explored: false,
-        };
+        }
     }
 
     pub fn new_wall() -> Self {
-        return Tile {
+        Tile {
             solid: true,
             transparent: false,
             explored: false,
-        };
+        }
     }
 }
 

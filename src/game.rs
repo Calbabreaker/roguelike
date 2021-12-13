@@ -130,7 +130,7 @@ impl Game {
         let player = &self.objects[PLAYER_INDEX];
         if self.map.fov_map.is_in_fov(monster.x, monster.y) {
             // move towards player if too far away
-            if monster.distance(&player) >= 2.0 {
+            if monster.distance(player) >= 2.0 {
                 // cannot use player.x/player.y since move_obj_towards mut borrows self
                 let (player_x, player_y) = player.get_pos();
                 self.move_obj_towards(monster_index, player_x, player_y);
