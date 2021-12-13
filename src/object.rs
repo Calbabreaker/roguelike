@@ -7,8 +7,8 @@ pub enum DeathType {
 // combat related stuff (player, monsters, NPCs)
 #[derive(Debug)]
 pub struct Fighter {
-    pub max_hp: i32,
     pub hp: i32,
+    pub max_hp: i32,
     pub defense: i32,
     pub power: i32,
     pub death_type: DeathType,
@@ -47,17 +47,10 @@ impl Object {
         }
     }
 
-    pub fn add_fighter(
-        mut self,
-        max_hp: i32,
-        hp: i32,
-        defense: i32,
-        power: i32,
-        death_type: DeathType,
-    ) -> Self {
+    pub fn add_fighter(mut self, hp: i32, defense: i32, power: i32, death_type: DeathType) -> Self {
         self.fighter = Some(Fighter {
-            max_hp,
             hp,
+            max_hp: hp,
             defense,
             power,
             death_type,
@@ -93,6 +86,7 @@ impl Object {
         if let Some(fighter) = &mut self.fighter {
             fighter.hp -= damage;
             if fighter.hp <= 0 {
+                fighter.hp = 0;
                 self.die();
             }
         }

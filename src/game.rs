@@ -34,23 +34,26 @@ impl Game {
             prev_player_pos: (-1, -1),
         };
 
-        let (start_x, start_y) = game.map.rooms[0].get_center();
-        let player = Object::new(start_x, start_y, '@', tcod::colors::WHITE, "Player", true)
-            .add_fighter(30, 30, 2, 5, DeathType::Player);
-        game.objects.push(player);
-
-        for i in 0..game.map.rooms.len() {
-            game.place_random_objects(i);
-        }
-
+        game.init();
         game
+    }
+
+    fn init(&mut self) {
+        let (start_x, start_y) = self.map.rooms[0].get_center();
+        let player = Object::new(start_x, start_y, '@', tcod::colors::WHITE, "Player", true)
+            .add_fighter(50, 2, 5, DeathType::Player);
+        self.objects.push(player);
+
+        for i in 0..self.map.rooms.len() {
+            self.place_random_objects(i);
+        }
     }
 
     pub fn run(&mut self) {
         while !self.root.window_closed() {
             self.render();
             self.handle_input();
-            self.object_update();
+            self.update_objects();
         }
     }
 
@@ -100,13 +103,13 @@ impl Game {
 
         let key = self.root.wait_for_keypress(true);
         match key {
-            Key {
-                printable: 'f',
-                ctrl: true,
-                ..
-            } => self.root.set_fullscreen(!self.root.is_fullscreen()),
-
+            Key { printable: 'f', .. } => self.root.set_fullscreen(!self.root.is_fullscreen()),
             Key { code: Escape, .. } => std::process::exit(0),
+            Key { printable: 'r', .. } => {
+                self.objects.clear();
+                self.map = Map::new();
+                self.init();
+            }
 
             Key { code: Up, .. } => self.move_obj_by(PLAYER_INDEX, 0, -1),
             Key { code: Down, .. } => self.move_obj_by(PLAYER_INDEX, 0, 1),
@@ -117,7 +120,7 @@ impl Game {
         }
     }
 
-    fn object_update(&mut self) {
+    fn update_objects(&mut self) {
         for i in 0..self.objects.len() {
             if self.objects[i].ai.is_some() {
                 self.ai_basic_turn(i);
@@ -162,10 +165,10 @@ impl Game {
             if !self.is_blocked(x, y) {
                 let monster = match rand::random::<f32>() {
                     p if p < 0.8 => Object::new(x, y, 'o', tcod::colors::DARKER_GREEN, "Orc", true)
-                        .add_fighter(10, 10, 0, 3, DeathType::Monster)
+                        .add_fighter(10, 0, 3, DeathType::Monster)
                         .add_ai(Ai::Basic),
                     _ => Object::new(x, y, 'T', tcod::colors::DARK_GREEN, "Troll", true)
-                        .add_fighter(16, 16, 1, 4, DeathType::Monster)
+                        .add_fighter(16, 1, 4, DeathType::Monster)
                         .add_ai(Ai::Basic),
                 };
 
